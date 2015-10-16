@@ -40,6 +40,7 @@
 
 #define MEMCACHED_DEF_HOST "127.0.0.1"
 #define MEMCACHED_DEF_PORT "11211"
+#define MEMCACHED_DEF_G_HOSTN 0
 
 struct memcached_s
 {
@@ -47,6 +48,7 @@ struct memcached_s
   char *socket;
   char *host;
   char *port;
+  _Bool use_global_hostn;
 };
 typedef struct memcached_s memcached_t;
 
@@ -252,7 +254,7 @@ static void memcached_init_vl (value_list_t *vl, memcached_t const *st)
   }
   else
   {
-    if (st->socket != NULL)
+    if (st->socket != NULL || st->use_global_hostn)
       sstrncpy (vl->host, hostname_g, sizeof (vl->host));
     else
       sstrncpy (vl->host,
@@ -599,6 +601,7 @@ static int config_add_instance(oconfig_item_t *ci)
   st->socket = NULL;
   st->host = NULL;
   st->port = NULL;
+  st->use_global_hostn = MEMCACHED_DEF_G_HOSTN;
 
   if (strcasecmp (ci->key, "Plugin") == 0) /* default instance */
     st->name = sstrdup ("__legacy__");
@@ -621,6 +624,8 @@ static int config_add_instance(oconfig_item_t *ci)
       status = cf_util_get_string (child, &st->host);
     else if (strcasecmp ("Port", child->key) == 0)
       status = cf_util_get_service (child, &st->port);
+    else if (strcasecmp ("UseGlobalHostname", child->key) == 0)
+      status = cf_util_get_boolean (child, &st->use_global_hostn);
     else
     {
       WARNING ("memcached plugin: Option `%s' not allowed here.",
@@ -693,6 +698,7 @@ static int memcached_init (void)
   st->socket = NULL;
   st->host = NULL;
   st->port = NULL;
+  st->use_global_hostn = NULL;
 
   status = memcached_add_read_callback (st);
   if (status == 0)
